@@ -4,7 +4,6 @@
 #  32 GB memoria RAM
 # 256 GB espacio en disco
 
-# se entrena con POS =  { BAJA+1, BAJA+2 }
 # Optimizacion Bayesiana de hiperparametros de  lightgbm, con el metodo TRADICIONAL de los hiperparametros originales de lightgbm
 # 5-fold cross validation
 # la probabilidad de corte es un hiperparametro
@@ -35,22 +34,25 @@ semillas = c(539141, 746773, 448883, 190207, 982343)
 
 #Aqui se cargan los hiperparametros
 hs <- makeParamSet( 
-  makeNumericParam("learning_rate",    lower=    0.0005, upper=    0.3),
-  makeNumericParam("feature_fraction", lower=    0.4  , upper=    1),
-  makeIntegerParam("min_data_in_leaf", lower=    150L   , upper=  8000L),
-  makeIntegerParam("num_leaves",       lower=   100L   , upper=  800L),
-  makeNumericParam("lambda_l1",        lower=   0.0    , upper=  10),
-  makeNumericParam("lambda_l2",        lower=   0.0    , upper=  10),
-  makeIntegerParam("envios",           lower= 8000L   , upper= 13000L),
-  makeIntegerParam("binaria_tipo",     lower= 1L   , upper= 2L),
-  mak
+  makeNumericParam("learning_rate",    lower=   0.05 , upper=   0.5),
+  makeNumericParam("feature_fraction", lower=   0.6  , upper=   1),
+  makeIntegerParam("min_data_in_leaf", lower=   150L , upper=   8000L),
+  makeIntegerParam("num_leaves",       lower=   100L , upper=   800L),
+  makeNumericParam("lambda_l1",        lower=   0.0  , upper=   10),
+  makeNumericParam("lambda_l2",        lower=   0.0  , upper=   10),
+  makeNumericParam("min_gain_to_split",lower=   0.0  , upper=   2),
+  makeIntegerParam("envios",           lower=   2000L, upper=   20000L),
+  makeIntegerParam("bajas_unidas",     default=FALSE),
+  makeLogicalParam("unir_tarjetas",    default=FALSE),
+  makeLogicalParam("generar_estables",    default=FALSE),
+  makeLogicalParam("sacar_drifteadas",    default=FALSE),
 )
 
 #defino los parametros de la corrida, en una lista, la variable global  PARAM
 #  muy pronto esto se leera desde un archivo formato .yaml
 PARAM  <- list()
 
-PARAM$experimento  <- "002"
+PARAM$experimento  <- "011"
 
 PARAM$input$dataset       <- "./datasets/competencia2_2022.csv.gz"
 PARAM$input$training      <- c( 202103 )
@@ -59,7 +61,7 @@ PARAM$input$train_test      <- c( 202103,202105 )
 PARAM$trainingstrategy$undersampling  <-  1.0   # un undersampling de 0.1  toma solo el 10% de los CONTINUA
 PARAM$trainingstrategy$semilla_azar   <- semillas[1]  #Aqui poner la propia semilla
 
-PARAM$hyperparametertuning$iteraciones <- 500
+PARAM$hyperparametertuning$iteraciones <- 750
 PARAM$hyperparametertuning$xval_folds  <- 5
 PARAM$hyperparametertuning$POS_ganancia  <- 78000
 PARAM$hyperparametertuning$NEG_ganancia  <- -2000
@@ -114,7 +116,7 @@ fganancia_logistic_lightgbm  <- function( probs, datos)
 #esta funcion solo puede recibir los parametros que se estan optimizando
 #el resto de los parametros se pasan como variables globales, la semilla del mal ...
 
-EstimarGanancia_lightgbm  <- function( x )
+EstimarGanancia_lightgbm  <- function( x, dataset )
 {
   gc()  #libero memoria
   
@@ -126,6 +128,11 @@ EstimarGanancia_lightgbm  <- function( x )
   
   kfolds  <- PARAM$hyperparametertuning$xval_folds   # cantidad de folds para cross validation
   
+  dataset <- unir_tarjetas(dataset,x)
+  dataset <- generar_estables(dataset,x)
+  dataset <- sacar_drifteadas(dataset,x)
+  dtrain <- data_wrangle(dataset,x)
+  
   param_basicos  <- list( objective= "binary",
                           metric= "custom",
                           first_metric_only= TRUE,
@@ -133,9 +140,9 @@ EstimarGanancia_lightgbm  <- function( x )
                           feature_pre_filter= FALSE,
                           verbosity= -100,
                           max_depth=  -1,         # -1 significa no limitar,  por ahora lo dejo fijo
-                          min_gain_to_split= 0.0, #por ahora, lo dejo fijo
-                          lambda_l1= 0.0,         #por ahora, lo dejo fijo
-                          lambda_l2= 0.0,         #por ahora, lo dejo fijo
+                          #min_gain_to_split= 0.0, #por ahora, lo dejo fijo
+                          #lambda_l1= 0.0,         #por ahora, lo dejo fijo
+                          #lambda_l2= 0.0,         #por ahora, lo dejo fijo
                           max_bin= 31,            #por ahora, lo dejo fijo
                           num_iterations= 9999,   #un numero muy grande, lo limita early_stopping_rounds
                           force_row_wise= TRUE,   #para que los alumnos no se atemoricen con tantos warning
@@ -192,6 +199,116 @@ EstimarGanancia_lightgbm  <- function( x )
   
   return( ganancia_normalizada )
 }
+
+unir_tarjetas <- function(dataset,x){
+  if (x$unir_tarjetas){
+    dataset [, ccajas_otras := NULL]
+    dataset [, VisaMaster_Fvencimiento_min := pmin(Visa_Fvencimiento, Master_Fvencimiento)]
+    dataset [, VisaMaster_Fvencimiento_max := pmax(Visa_Fvencimiento, Master_Fvencimiento)]
+    dataset [, VisaMaster_Finiciomora_min := pmin(Visa_Finiciomora, Master_Finiciomora)]
+    dataset [, VisaMaster_Finiciomora_max := pmax(Visa_Finiciomora, Master_Finiciomora)]
+    dataset [, VisaMaster_mlimitecompra_min := pmin(Visa_mlimitecompra, Master_mlimitecompra)]
+    dataset [, VisaMaster_mlimitecompra_max := pmax(Visa_mlimitecompra, Master_mlimitecompra)]
+    dataset [, VisaMaster_fultimo_cierre_min := pmin(Visa_fultimo_cierre, Master_fultimo_cierre)]
+    dataset [, VisaMaster_fultimo_cierre_max := pmax(Visa_fultimo_cierre, Master_fultimo_cierre)]
+    dataset [, VisaMaster_fechaalta_min := pmin(Visa_fechaalta, Master_fechaalta)]
+    dataset [, VisaMaster_fechaalta_max := pmax(Visa_fechaalta, Master_fechaalta)]
+    dataset [, VisaMaster_delinquency := rowSums(.SD), .SDcols = c('Visa_delinquency','Master_delinquency')]
+    dataset [, VisaMaster_mfinanciacion_limite := rowSums(.SD), .SDcols = c('Visa_mfinanciacion_limite','Master_mfinanciacion_limite')]
+    dataset [, VisaMaster_msaldototal := rowSums(.SD), .SDcols = c('Visa_msaldototal','Master_msaldototal')]
+    dataset [, VisaMaster_msaldopesos := rowSums(.SD), .SDcols = c('Visa_msaldopesos','Master_msaldopesos')]
+    dataset [, VisaMaster_msaldodolares := rowSums(.SD), .SDcols = c('Visa_msaldodolares','Master_msaldodolares')]
+    dataset [, VisaMaster_mconsumospesos := rowSums(.SD), .SDcols = c('Visa_mconsumospesos','Master_mconsumospesos')]
+    dataset [, VisaMaster_mconsumosdolares := rowSums(.SD), .SDcols = c('Visa_mconsumosdolares','Master_mconsumosdolares')]
+    dataset [, VisaMaster_mlimitecompra := rowSums(.SD), .SDcols = c('Visa_mlimitecompra','Master_mlimitecompra')]
+    dataset [, VisaMaster_madelantopesos := rowSums(.SD), .SDcols = c('Visa_madelantopesos','Master_madelantopesos')]
+    dataset [, VisaMaster_madelantodolares := rowSums(.SD), .SDcols = c('Visa_madelantodolares','Master_madelantodolares')]
+    dataset [, VisaMaster_mpagado := rowSums(.SD), .SDcols = c('Visa_mpagado','Master_mpagado')]
+    dataset [, VisaMaster_mpagospesos := rowSums(.SD), .SDcols = c('Visa_mpagospesos','Master_mpagospesos')]
+    dataset [, VisaMaster_mpagosdolares := rowSums(.SD), .SDcols = c('Visa_mpagosdolares','Master_mpagosdolares')]
+    dataset [, VisaMaster_mconsumototal := rowSums(.SD), .SDcols = c('Visa_mconsumototal','Master_mconsumototal')]
+    dataset [, VisaMaster_cconsumos := rowSums(.SD), .SDcols = c('Visa_cconsumos','Master_cconsumos')]
+    dataset [, VisaMaster_cadelantosefectivo := rowSums(.SD), .SDcols = c('Visa_cadelantosefectivo','Master_cadelantosefectivo')]
+    dataset [, VisaMaster_mpagominimo := rowSums(.SD), .SDcols = c('Visa_mpagominimo','Master_mpagominimo')]
+    #con esto saco las columnas Visa_ y Master_ originales.
+    dataset [, grep("^(Master_|Visa_).*", colnames(dataset)):=NULL]
+  }
+}
+
+generar_estables <- function(dataset,x){
+  if (x$generar_estables){
+    dataset [, uso_estables_pr := rowSums(.SD), .SDcols = c('cprestamos_personales','cprestamos_prendarios','cprestamos_hipotecarios','cplazo_fijo','cinversion1','cinversion2','cseguro_vida','cseguro_auto','cseguro_vivienda','cseguro_accidentes_personales','ccaja_seguridad')]
+    dataset [,uso_estables_pr_bool := uso_estables_pr > 0 ]
+    dataset [, uso_estables_tr := rowSums(.SD), .SDcols = c('ctarjeta_debito_transacciones','ctarjeta_visa_transacciones','ctarjeta_master_transacciones','cpayroll_trx','cpayroll2_trx','ctarjeta_master_debitos_automaticos','ctarjeta_visa_debitos_automaticos')]
+    dataset [,uso_estables_tr_bool := uso_estables_tr > 0 ]
+  }
+}
+
+sacar_drifteadas <- function(dataset,x){
+  if (x$sacar_drifteadas){
+    dataset [, mcomisiones := NULL ]    
+    dataset [, mcomisiones_otras := NULL ]
+    dataset [, mpayroll := NULL ]
+    dataset [, ccajas_otras := NULL ]   
+    dataset [, mcaja_ahorro_dolares := NULL ]
+    dataset [, mcheques_emitidos_rechazados := NULL ]
+    dataset [, mcuenta_corriente_adicional := NULL ]
+    dataset [, mpayroll2 := NULL ]
+    dataset [, mforex_buy := NULL ]
+  }
+}
+
+data_wrangle <- function(dataset,x){
+  
+  #paso la clase a binaria que tome valores {0,1}  enteros
+  if (x$bajas_unidas){
+    dataset[ foto_mes %in% PARAM$input$training, clase01 := ifelse( clase_ternaria=="CONTINUA", 0L, 1L) ]
+  } else {
+    dataset[ foto_mes %in% PARAM$input$training, clase01 := ifelse( clase_ternaria=="BAJA+2", 1L, 0L) ]
+  }
+  marzo <- dataset[foto_mes %in% PARAM$input$training ]
+  clase01 <- marzo$clase01
+  marzo [, clase01 := NULL]
+  clase01_total <- dataset [,clase01]
+  dataset [, clase01 := NULL]
+  
+  dtrain_xgb <- xgb.DMatrix(
+    data = data.matrix( marzo ),
+    label = clase01, missing = NA)
+  
+  set.seed(semillas[1])
+  param_fe <- list(
+    max_depth = 4,
+    eta = 0.1,
+    num_parallel_tree = 4,
+    objective = "binary:logistic")
+  nrounds <- 5
+  
+  xgb_model <- xgb.train(params = param_fe, data = dtrain_xgb, nrounds = 1)
+  
+  dataset <- as.data.table(as.matrix( xgb.create.features(model = xgb_model, data.matrix(dataset))  ))
+  dataset [, clase01 := clase01_total]
+  
+  rm(list = c("marzo","xgb_model","clase01","clase01_total","dtrain_xgb"))
+  
+  campos_buenos  <- setdiff( colnames(dataset), c("clase_ternaria","clase01", "azar", "training" ) )
+  
+  set.seed( PARAM$trainingstrategy$semilla_azar )
+  dataset[  , azar := runif( nrow( dataset ) ) ]
+  dataset[  , training := 0L ]
+  dataset[ foto_mes %in% PARAM$input$training & 
+             ( azar <= PARAM$trainingstrategy$undersampling | clase_ternaria %in% c( "BAJA+1", "BAJA+2" ) ),
+           training := 1L ]
+  
+  #dejo los datos en el formato que necesita LightGBM
+  dtrain  <- lgb.Dataset( data= data.matrix(  dataset[ training == 1L, campos_buenos, with=FALSE]),
+                          label= dataset[ training == 1L, clase01 ],
+                          weight=  dataset[ training == 1L, ifelse( clase_ternaria=="BAJA+2", 1.0000002, ifelse( clase_ternaria=="BAJA+1",  1.0000001, 1.0) )],
+                          free_raw_data= FALSE  )
+  
+  return (dtrain)
+}
+
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
 #Aqui empieza el programa
@@ -204,48 +321,6 @@ if (local) {setwd("/home/user/projects/dmeyf_R")
 #cargo el dataset donde voy a entrenar el modelo
 dataset  <- fread( PARAM$input$dataset )
 dataset <- dataset [foto_mes %in% PARAM$input$train_test]
-
-### agrego FE ###
-
-#saco las columnas en las que detecto concept drifting
-dataset [, ccajas_otras := NULL]
-dataset [, VisaMaster_Fvencimiento_min := pmin(Visa_Fvencimiento, Master_Fvencimiento)]
-dataset [, VisaMaster_Fvencimiento_max := pmax(Visa_Fvencimiento, Master_Fvencimiento)]
-dataset [, VisaMaster_Finiciomora_min := pmin(Visa_Finiciomora, Master_Finiciomora)]
-dataset [, VisaMaster_Finiciomora_max := pmax(Visa_Finiciomora, Master_Finiciomora)]
-dataset [, VisaMaster_mlimitecompra_min := pmin(Visa_mlimitecompra, Master_mlimitecompra)]
-dataset [, VisaMaster_mlimitecompra_max := pmax(Visa_mlimitecompra, Master_mlimitecompra)]
-dataset [, VisaMaster_fultimo_cierre_min := pmin(Visa_fultimo_cierre, Master_fultimo_cierre)]
-dataset [, VisaMaster_fultimo_cierre_max := pmax(Visa_fultimo_cierre, Master_fultimo_cierre)]
-dataset [, VisaMaster_fechaalta_min := pmin(Visa_fechaalta, Master_fechaalta)]
-dataset [, VisaMaster_fechaalta_max := pmax(Visa_fechaalta, Master_fechaalta)]
-dataset [, VisaMaster_delinquency := rowSums(.SD), .SDcols = c('Visa_delinquency','Master_delinquency')]
-dataset [, VisaMaster_mfinanciacion_limite := rowSums(.SD), .SDcols = c('Visa_mfinanciacion_limite','Master_mfinanciacion_limite')]
-dataset [, VisaMaster_msaldototal := rowSums(.SD), .SDcols = c('Visa_msaldototal','Master_msaldototal')]
-dataset [, VisaMaster_msaldopesos := rowSums(.SD), .SDcols = c('Visa_msaldopesos','Master_msaldopesos')]
-dataset [, VisaMaster_msaldodolares := rowSums(.SD), .SDcols = c('Visa_msaldodolares','Master_msaldodolares')]
-dataset [, VisaMaster_mconsumospesos := rowSums(.SD), .SDcols = c('Visa_mconsumospesos','Master_mconsumospesos')]
-dataset [, VisaMaster_mconsumosdolares := rowSums(.SD), .SDcols = c('Visa_mconsumosdolares','Master_mconsumosdolares')]
-dataset [, VisaMaster_mlimitecompra := rowSums(.SD), .SDcols = c('Visa_mlimitecompra','Master_mlimitecompra')]
-dataset [, VisaMaster_madelantopesos := rowSums(.SD), .SDcols = c('Visa_madelantopesos','Master_madelantopesos')]
-dataset [, VisaMaster_madelantodolares := rowSums(.SD), .SDcols = c('Visa_madelantodolares','Master_madelantodolares')]
-dataset [, VisaMaster_mpagado := rowSums(.SD), .SDcols = c('Visa_mpagado','Master_mpagado')]
-dataset [, VisaMaster_mpagospesos := rowSums(.SD), .SDcols = c('Visa_mpagospesos','Master_mpagospesos')]
-dataset [, VisaMaster_mpagosdolares := rowSums(.SD), .SDcols = c('Visa_mpagosdolares','Master_mpagosdolares')]
-dataset [, VisaMaster_mconsumototal := rowSums(.SD), .SDcols = c('Visa_mconsumototal','Master_mconsumototal')]
-dataset [, VisaMaster_cconsumos := rowSums(.SD), .SDcols = c('Visa_cconsumos','Master_cconsumos')]
-dataset [, VisaMaster_cadelantosefectivo := rowSums(.SD), .SDcols = c('Visa_cadelantosefectivo','Master_cadelantosefectivo')]
-dataset [, VisaMaster_mpagominimo := rowSums(.SD), .SDcols = c('Visa_mpagominimo','Master_mpagominimo')]
-#con esto saco las columnas Visa_ y Master_ originales.
-#dataset [, grep("^(Master_|Visa_).*", colnames(dataset)):=NULL]
-
-dataset [, uso_estables_pr := rowSums(.SD), .SDcols = c('cprestamos_personales','cprestamos_prendarios','cprestamos_hipotecarios','cplazo_fijo','cinversion1','cinversion2','cseguro_vida','cseguro_auto','cseguro_vivienda','cseguro_accidentes_personales','ccaja_seguridad')]
-dataset [,uso_estables_pr_bool := uso_estables_pr > 0 ]
-dataset [, uso_estables_tr := rowSums(.SD), .SDcols = c('ctarjeta_debito_transacciones','ctarjeta_visa_transacciones','ctarjeta_master_transacciones','cpayroll_trx','cpayroll2_trx','ctarjeta_master_debitos_automaticos','ctarjeta_visa_debitos_automaticos')]
-dataset [,uso_estables_tr_bool := uso_estables_tr > 0 ]
-
-
-#### 
 
 #creo la carpeta donde va el experimento
 # HT  representa  Hiperparameter Tuning
@@ -268,58 +343,6 @@ if( file.exists(klog) )
   GLOBAL_iteracion  <- nrow( tabla_log )
   GLOBAL_gananciamax  <- tabla_log[ , max( ganancia ) ]
 }
-
-
-
-#paso la clase a binaria que tome valores {0,1}  enteros
-if (x$binaria_tipo == 1){
-  dataset[ foto_mes %in% PARAM$input$training, clase01 := ifelse( clase_ternaria=="CONTINUA", 0L, 1L) ]
-  } else {
-    dataset[ foto_mes %in% PARAM$input$training, clase01 := ifelse( clase_ternaria=="BAJA+2", 1L, 0L) ]
-}
-marzo <- dataset[foto_mes %in% PARAM$input$training ]
-clase01 <- marzo$clase_01
-marzo [, clase01 := NULL]
-clase01_total <- dataset [,clase01]
-dataset [, clase01 := NULL]
-
-dtrain_xgb <- xgb.DMatrix(
-  data = data.matrix( marzo ),
-  label = clase01, missing = NA)
-
-set.seed(semillas[1])
-param_fe <- list(
-  max_depth = 4,
-  eta = 0.1,
-  num_parallel_tree = 4,
-  objective = "binary:logistic")
-nrounds <- 5
-
-xgb_model <- xgb.train(params = param_fe, data = dtrain_xgb, nrounds = 1)
-
-dataset <- as.data.table(as.matrix( xgb.create.features(model = xgb_model, data.matrix(dataset))  ))
-dataset [, clase01 := clase01_total]
-
-rm(list = c("marzo","xgb_model","clase01","clase01_total","dtrain_xgb"))
-
-campos_buenos  <- setdiff( colnames(dataset), c("clase_ternaria","clase01", "azar", "training" ) )
-
-
-
-###
-
-set.seed( PARAM$trainingstrategy$semilla_azar )
-dataset[  , azar := runif( nrow( dataset ) ) ]
-dataset[  , training := 0L ]
-dataset[ foto_mes %in% PARAM$input$training & 
-           ( azar <= PARAM$trainingstrategy$undersampling | clase_ternaria %in% c( "BAJA+1", "BAJA+2" ) ),
-         training := 1L ]
-
-#dejo los datos en el formato que necesita LightGBM
-dtrain  <- lgb.Dataset( data= data.matrix(  dataset[ training == 1L, campos_buenos, with=FALSE]),
-                        label= dataset[ training == 1L, clase01 ],
-                        weight=  dataset[ training == 1L, ifelse( clase_ternaria=="BAJA+2", 1.0000002, ifelse( clase_ternaria=="BAJA+1",  1.0000001, 1.0) )],
-                        free_raw_data= FALSE  )
 
 #Aqui comienza la configuracion de la Bayesian Optimization
 funcion_optimizar  <- EstimarGanancia_lightgbm   #la funcion que voy a maximizar
@@ -349,6 +372,5 @@ if( !file.exists( kbayesiana ) ) {
 } else {
   run  <- mboContinue( kbayesiana )   #retomo en caso que ya exista
 }
-
 
 quit( save="no" )

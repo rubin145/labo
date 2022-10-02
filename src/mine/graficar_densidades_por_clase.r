@@ -56,8 +56,10 @@ montos <- grep("^c.*",colnames(dataset))
 
 cols <- c()
 for (col in montos){
+  
   variable = colnames(dataset)[col]
-  cols <- append(cols,variable)
+  if (class(dataset[,.SD,.SDcols=c(variable)])=="numeric"){
+  cols <- append(cols,variable) }
 }
 #dataset[ , (cols) := lapply(.SD, function(x) x^2), .SDcols = cols]
 dataset[ , (cols) := lapply(.SD, log), .SDcols = cols]
@@ -89,7 +91,7 @@ setwd("./exp/clase_contra_clase/")
 
 
 
-pdf("densidades_clase_contra_clase_exponencial.pdf")
+pdf("densidades_clase_contra_clase_log.pdf")
 
 for( campo in  campos_buenos )
 {
