@@ -189,6 +189,11 @@ prediccion  <- predict( modelo,
 tb_entrega  <-  dapply[ , list( numero_de_cliente, foto_mes ) ]
 tb_entrega[  , prob := prediccion ]
 
+dir.create( "./exp/",  showWarnings = FALSE )
+dir.create(paste0("./exp/",PARAM$experimento,"/"),  showWarnings = FALSE )
+dir.create(paste0("./exp/",PARAM$experimento,"/resp/"),  showWarnings = FALSE )
+setwd(paste0("./exp/",PARAM$experimento,"/resp/"))
+
 #grabo las probabilidad del modelo
 fwrite( tb_entrega,
         file= "prediccion.txt",
