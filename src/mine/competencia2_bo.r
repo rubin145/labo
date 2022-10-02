@@ -116,7 +116,7 @@ fganancia_logistic_lightgbm  <- function( probs, datos)
 #esta funcion solo puede recibir los parametros que se estan optimizando
 #el resto de los parametros se pasan como variables globales, la semilla del mal ...
 
-EstimarGanancia_lightgbm  <- function( x )
+EstimarGanancia_lightgbm  <- function( x, dataset=dataset_orig )
 {
   gc()  #libero memoria
   
@@ -128,14 +128,15 @@ EstimarGanancia_lightgbm  <- function( x )
   
   kfolds  <- PARAM$hyperparametertuning$xval_folds   # cantidad de folds para cross validation
   
+  setwd(path)
   #cargo el dataset donde voy a entrenar el modelo
-  dataset  <- fread( PARAM$input$dataset )
+  #dataset  <- dataset_orig
   dataset <- dataset [foto_mes %in% PARAM$input$train_test]
   
-  dataset <- unir_tarjetas(x)
-  dataset <- generar_estables(x)
-  dataset <- sacar_drifteadas(x)
-  dtrain <- data_wrangle(x)
+  if (x$unir_tarjetas){dataset <- unir_tarjetas(x,dataset)}
+  if (x$generar_estables){ dataset <- generar_estables(x,dataset) }
+  if(x$sacar_drifteadas){dataset <- sacar_drifteadas(x,dataset)}
+  dtrain <- data_wrangle(x,dataset)
   
   param_basicos  <- list( objective= "binary",
                           metric= "custom",
@@ -175,6 +176,8 @@ EstimarGanancia_lightgbm  <- function( x )
   param_completo$num_iterations <- modelocv$best_iter  #asigno el mejor num_iterations
   param_completo["early_stopping_rounds"]  <- NULL     #elimino de la lista el componente  "early_stopping_rounds"
   
+  
+  setwd( paste0( "./exp/", PARAM$experimento, "/") )   #Establezco el Working Directory DEL EXPERIMENTO
   #Voy registrando la importancia de variables
   if( ganancia_normalizada >  GLOBAL_gananciamax )
   {
@@ -204,66 +207,62 @@ EstimarGanancia_lightgbm  <- function( x )
   return( ganancia_normalizada )
 }
 
-unir_tarjetas <- function(x){
-  if (x$unir_tarjetas){
-    dataset [, ccajas_otras := NULL]
-    dataset [, VisaMaster_Fvencimiento_min := pmin(Visa_Fvencimiento, Master_Fvencimiento)]
-    dataset [, VisaMaster_Fvencimiento_max := pmax(Visa_Fvencimiento, Master_Fvencimiento)]
-    dataset [, VisaMaster_Finiciomora_min := pmin(Visa_Finiciomora, Master_Finiciomora)]
-    dataset [, VisaMaster_Finiciomora_max := pmax(Visa_Finiciomora, Master_Finiciomora)]
-    dataset [, VisaMaster_mlimitecompra_min := pmin(Visa_mlimitecompra, Master_mlimitecompra)]
-    dataset [, VisaMaster_mlimitecompra_max := pmax(Visa_mlimitecompra, Master_mlimitecompra)]
-    dataset [, VisaMaster_fultimo_cierre_min := pmin(Visa_fultimo_cierre, Master_fultimo_cierre)]
-    dataset [, VisaMaster_fultimo_cierre_max := pmax(Visa_fultimo_cierre, Master_fultimo_cierre)]
-    dataset [, VisaMaster_fechaalta_min := pmin(Visa_fechaalta, Master_fechaalta)]
-    dataset [, VisaMaster_fechaalta_max := pmax(Visa_fechaalta, Master_fechaalta)]
-    dataset [, VisaMaster_delinquency := rowSums(.SD), .SDcols = c('Visa_delinquency','Master_delinquency')]
-    dataset [, VisaMaster_mfinanciacion_limite := rowSums(.SD), .SDcols = c('Visa_mfinanciacion_limite','Master_mfinanciacion_limite')]
-    dataset [, VisaMaster_msaldototal := rowSums(.SD), .SDcols = c('Visa_msaldototal','Master_msaldototal')]
-    dataset [, VisaMaster_msaldopesos := rowSums(.SD), .SDcols = c('Visa_msaldopesos','Master_msaldopesos')]
-    dataset [, VisaMaster_msaldodolares := rowSums(.SD), .SDcols = c('Visa_msaldodolares','Master_msaldodolares')]
-    dataset [, VisaMaster_mconsumospesos := rowSums(.SD), .SDcols = c('Visa_mconsumospesos','Master_mconsumospesos')]
-    dataset [, VisaMaster_mconsumosdolares := rowSums(.SD), .SDcols = c('Visa_mconsumosdolares','Master_mconsumosdolares')]
-    dataset [, VisaMaster_mlimitecompra := rowSums(.SD), .SDcols = c('Visa_mlimitecompra','Master_mlimitecompra')]
-    dataset [, VisaMaster_madelantopesos := rowSums(.SD), .SDcols = c('Visa_madelantopesos','Master_madelantopesos')]
-    dataset [, VisaMaster_madelantodolares := rowSums(.SD), .SDcols = c('Visa_madelantodolares','Master_madelantodolares')]
-    dataset [, VisaMaster_mpagado := rowSums(.SD), .SDcols = c('Visa_mpagado','Master_mpagado')]
-    dataset [, VisaMaster_mpagospesos := rowSums(.SD), .SDcols = c('Visa_mpagospesos','Master_mpagospesos')]
-    dataset [, VisaMaster_mpagosdolares := rowSums(.SD), .SDcols = c('Visa_mpagosdolares','Master_mpagosdolares')]
-    dataset [, VisaMaster_mconsumototal := rowSums(.SD), .SDcols = c('Visa_mconsumototal','Master_mconsumototal')]
-    dataset [, VisaMaster_cconsumos := rowSums(.SD), .SDcols = c('Visa_cconsumos','Master_cconsumos')]
-    dataset [, VisaMaster_cadelantosefectivo := rowSums(.SD), .SDcols = c('Visa_cadelantosefectivo','Master_cadelantosefectivo')]
-    dataset [, VisaMaster_mpagominimo := rowSums(.SD), .SDcols = c('Visa_mpagominimo','Master_mpagominimo')]
-    #con esto saco las columnas Visa_ y Master_ originales.
-    dataset [, grep("^(Master_|Visa_).*", colnames(dataset)):=NULL]
-  }
+unir_tarjetas <- function(x,dataset){
+  dataset [, ccajas_otras := NULL]
+  dataset [, VisaMaster_Fvencimiento_min := pmin(Visa_Fvencimiento, Master_Fvencimiento)]
+  dataset [, VisaMaster_Fvencimiento_max := pmax(Visa_Fvencimiento, Master_Fvencimiento)]
+  dataset [, VisaMaster_Finiciomora_min := pmin(Visa_Finiciomora, Master_Finiciomora)]
+  dataset [, VisaMaster_Finiciomora_max := pmax(Visa_Finiciomora, Master_Finiciomora)]
+  dataset [, VisaMaster_mlimitecompra_min := pmin(Visa_mlimitecompra, Master_mlimitecompra)]
+  dataset [, VisaMaster_mlimitecompra_max := pmax(Visa_mlimitecompra, Master_mlimitecompra)]
+  dataset [, VisaMaster_fultimo_cierre_min := pmin(Visa_fultimo_cierre, Master_fultimo_cierre)]
+  dataset [, VisaMaster_fultimo_cierre_max := pmax(Visa_fultimo_cierre, Master_fultimo_cierre)]
+  dataset [, VisaMaster_fechaalta_min := pmin(Visa_fechaalta, Master_fechaalta)]
+  dataset [, VisaMaster_fechaalta_max := pmax(Visa_fechaalta, Master_fechaalta)]
+  dataset [, VisaMaster_delinquency := rowSums(.SD), .SDcols = c('Visa_delinquency','Master_delinquency')]
+  dataset [, VisaMaster_mfinanciacion_limite := rowSums(.SD), .SDcols = c('Visa_mfinanciacion_limite','Master_mfinanciacion_limite')]
+  dataset [, VisaMaster_msaldototal := rowSums(.SD), .SDcols = c('Visa_msaldototal','Master_msaldototal')]
+  dataset [, VisaMaster_msaldopesos := rowSums(.SD), .SDcols = c('Visa_msaldopesos','Master_msaldopesos')]
+  dataset [, VisaMaster_msaldodolares := rowSums(.SD), .SDcols = c('Visa_msaldodolares','Master_msaldodolares')]
+  dataset [, VisaMaster_mconsumospesos := rowSums(.SD), .SDcols = c('Visa_mconsumospesos','Master_mconsumospesos')]
+  dataset [, VisaMaster_mconsumosdolares := rowSums(.SD), .SDcols = c('Visa_mconsumosdolares','Master_mconsumosdolares')]
+  dataset [, VisaMaster_mlimitecompra := rowSums(.SD), .SDcols = c('Visa_mlimitecompra','Master_mlimitecompra')]
+  dataset [, VisaMaster_madelantopesos := rowSums(.SD), .SDcols = c('Visa_madelantopesos','Master_madelantopesos')]
+  dataset [, VisaMaster_madelantodolares := rowSums(.SD), .SDcols = c('Visa_madelantodolares','Master_madelantodolares')]
+  dataset [, VisaMaster_mpagado := rowSums(.SD), .SDcols = c('Visa_mpagado','Master_mpagado')]
+  dataset [, VisaMaster_mpagospesos := rowSums(.SD), .SDcols = c('Visa_mpagospesos','Master_mpagospesos')]
+  dataset [, VisaMaster_mpagosdolares := rowSums(.SD), .SDcols = c('Visa_mpagosdolares','Master_mpagosdolares')]
+  dataset [, VisaMaster_mconsumototal := rowSums(.SD), .SDcols = c('Visa_mconsumototal','Master_mconsumototal')]
+  dataset [, VisaMaster_cconsumos := rowSums(.SD), .SDcols = c('Visa_cconsumos','Master_cconsumos')]
+  dataset [, VisaMaster_cadelantosefectivo := rowSums(.SD), .SDcols = c('Visa_cadelantosefectivo','Master_cadelantosefectivo')]
+  dataset [, VisaMaster_mpagominimo := rowSums(.SD), .SDcols = c('Visa_mpagominimo','Master_mpagominimo')]
+  #con esto saco las columnas Visa_ y Master_ originales.
+  dataset [, grep("^(Master_|Visa_).*", colnames(dataset)):=NULL]
+  return (dataset)
 }
 
-generar_estables <- function(x){
-  if (x$generar_estables){
-    dataset [, uso_estables_pr := rowSums(.SD), .SDcols = c('cprestamos_personales','cprestamos_prendarios','cprestamos_hipotecarios','cplazo_fijo','cinversion1','cinversion2','cseguro_vida','cseguro_auto','cseguro_vivienda','cseguro_accidentes_personales','ccaja_seguridad')]
-    dataset [,uso_estables_pr_bool := uso_estables_pr > 0 ]
-    dataset [, uso_estables_tr := rowSums(.SD), .SDcols = c('ctarjeta_debito_transacciones','ctarjeta_visa_transacciones','ctarjeta_master_transacciones','cpayroll_trx','cpayroll2_trx','ctarjeta_master_debitos_automaticos','ctarjeta_visa_debitos_automaticos')]
-    dataset [,uso_estables_tr_bool := uso_estables_tr > 0 ]
-  }
+generar_estables <- function(x,dataset){
+  dataset [, uso_estables_pr := rowSums(.SD), .SDcols = c('cprestamos_personales','cprestamos_prendarios','cprestamos_hipotecarios','cplazo_fijo','cinversion1','cinversion2','cseguro_vida','cseguro_auto','cseguro_vivienda','cseguro_accidentes_personales','ccaja_seguridad')]
+  dataset [,uso_estables_pr_bool := uso_estables_pr > 0 ]
+  dataset [, uso_estables_tr := rowSums(.SD), .SDcols = c('ctarjeta_debito_transacciones','ctarjeta_visa_transacciones','ctarjeta_master_transacciones','cpayroll_trx','cpayroll2_trx','ctarjeta_master_debitos_automaticos','ctarjeta_visa_debitos_automaticos')]
+  dataset [,uso_estables_tr_bool := uso_estables_tr > 0 ]
+  return (dataset)
 }
 
-sacar_drifteadas <- function(x){
-  if (x$sacar_drifteadas){
-    dataset [, mcomisiones := NULL ]    
-    dataset [, mcomisiones_otras := NULL ]
-    dataset [, mpayroll := NULL ]
-    dataset [, ccajas_otras := NULL ]   
-    dataset [, mcaja_ahorro_dolares := NULL ]
-    dataset [, mcheques_emitidos_rechazados := NULL ]
-    dataset [, mcuenta_corriente_adicional := NULL ]
-    dataset [, mpayroll2 := NULL ]
-    dataset [, mforex_buy := NULL ]
-  }
+sacar_drifteadas <- function(x,dataset){
+  dataset [, mcomisiones := NULL ]    
+  dataset [, mcomisiones_otras := NULL ]
+  dataset [, mpayroll := NULL ]
+  dataset [, ccajas_otras := NULL ]   
+  dataset [, mcaja_ahorro_dolares := NULL ]
+  dataset [, mcheques_emitidos_rechazados := NULL ]
+  dataset [, mcuenta_corriente_adicional := NULL ]
+  dataset [, mpayroll2 := NULL ]
+  dataset [, mforex_buy := NULL ]
+  return (dataset)
 }
 
-data_wrangle <- function(x){
-  
+data_wrangle <- function(x,dataset){
   #paso la clase a binaria que tome valores {0,1}  enteros
   if (x$bajas_unidas){
     dataset[ foto_mes %in% PARAM$input$training, clase01 := ifelse( clase_ternaria=="CONTINUA", 0L, 1L) ]
@@ -318,9 +317,11 @@ data_wrangle <- function(x){
 #Aqui empieza el programa
 
 #Establezco el Working Directory (según local o cloud)
-if (local) {setwd("/home/user/projects/dmeyf_R")
-} else { setwd("~/buckets/b1/") 
+if (local) {path <- "/home/user/projects/dmeyf_R"
+} else { path <- "~/buckets/b1/"
 }
+setwd(path)
+dataset_orig  <- fread( PARAM$input$dataset )
 
 #creo la carpeta donde va el experimento
 # HT  representa  Hiperparameter Tuning
