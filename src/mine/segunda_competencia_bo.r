@@ -39,6 +39,8 @@ hs <- makeParamSet(
   makeNumericParam("feature_fraction", lower=    0.4  , upper=    1),
   makeIntegerParam("min_data_in_leaf", lower=    150L   , upper=  8000L),
   makeIntegerParam("num_leaves",       lower=   100L   , upper=  800L),
+  makeNumericParam("lambda_l1",        lower=   0.0    , upper=  10),
+  makeNumericParam("lambda_l2",        lower=   0.0    , upper=  10),
   makeIntegerParam("envios",           lower= 8000L   , upper= 13000L)
 )
 
