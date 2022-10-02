@@ -128,6 +128,10 @@ EstimarGanancia_lightgbm  <- function( x )
   
   kfolds  <- PARAM$hyperparametertuning$xval_folds   # cantidad de folds para cross validation
   
+  #cargo el dataset donde voy a entrenar el modelo
+  dataset  <- fread( PARAM$input$dataset )
+  dataset <- dataset [foto_mes %in% PARAM$input$train_test]
+  
   dataset <- unir_tarjetas(x)
   dataset <- generar_estables(x)
   dataset <- sacar_drifteadas(x)
@@ -318,10 +322,6 @@ if (local) {setwd("/home/user/projects/dmeyf_R")
 } else { setwd("~/buckets/b1/") 
 }
 
-#cargo el dataset donde voy a entrenar el modelo
-dataset  <- fread( PARAM$input$dataset )
-dataset <- dataset [foto_mes %in% PARAM$input$train_test]
-
 #creo la carpeta donde va el experimento
 # HT  representa  Hiperparameter Tuning
 dir.create( "./exp/",  showWarnings = FALSE ) 
@@ -331,7 +331,6 @@ setwd( paste0( "./exp/", PARAM$experimento, "/") )   #Establezco el Working Dire
 #en estos archivos quedan los resultados
 kbayesiana  <- paste0( PARAM$experimento, ".RDATA" )
 klog        <- paste0( PARAM$experimento, ".txt" )
-
 
 GLOBAL_iteracion  <- 0   #inicializo la variable global
 GLOBAL_gananciamax <- -1 #inicializo la variable global
