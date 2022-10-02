@@ -12,7 +12,7 @@ if (".env" %in% list.files(path=".", pattern=NULL, all.files=TRUE,full.names=FAL
 semillas = c(539141, 746773, 448883, 190207, 982343)
 
 PARAM  <- list()
-PARAM$experimento  <- "001"
+PARAM$experimento  <- "002"
 
 PARAM$input$dataset       <- "./datasets/competencia2_2022.csv.gz"
 PARAM$input$training      <- c( 202103 )
@@ -97,7 +97,6 @@ dataset [, uso_estables_tr := rowSums(.SD), .SDcols = c('ctarjeta_debito_transac
 dataset [,uso_estables_tr_bool := uso_estables_tr > 0 ]
 
 dataset[ foto_mes %in% PARAM$input$training, clase01 := ifelse( clase_ternaria=="CONTINUA", 0L, 1L) ]
-campos_buenos  <- setdiff( colnames(dataset), c("clase_ternaria","clase01", "azar", "training" ) )
 
 marzo <- dataset[foto_mes %in% PARAM$input$training ]
 clase01 <- ifelse(marzo$clase_ternaria == "CONTINUA", 0, 1)
@@ -124,8 +123,7 @@ dataset [, clase01 := clase01_total]
 
 rm(list = c("marzo","xgb_model","clase01","clase01_total","dtrain_xgb"))
 
-
-
+campos_buenos  <- setdiff( colnames(dataset), c("clase_ternaria","clase01", "azar", "training" ) )
 
 
 set.seed( PARAM$trainingstrategy$semilla_azar )
@@ -136,10 +134,11 @@ dataset[ foto_mes %in% PARAM$input$training &
          training := 1L ]
 
 #dejo los datos en el formato que necesita LightGBM
-dtrain  <- lgb.Dataset( data= data.matrix(  dataset[ training == 1L, campos_buenos, with=FALSE]),
-                        label= dataset[ training == 1L, clase01 ],
-                        weight=  dataset[ training == 1L, ifelse( clase_ternaria=="BAJA+2", 1.0000002, ifelse( clase_ternaria=="BAJA+1",  1.0000001, 1.0) )],
-                        free_raw_data= FALSE  )
+dataset[ , train  := 0L ]
+dataset[ foto_mes %in% PARAM$input$training, train  := 1L ]
+
+dtrain  <- lgb.Dataset( data= data.matrix(  dataset[ train==1L, campos_buenos, with=FALSE]),
+                        label= dataset[ train==1L, clase01] )
 
 ###entrenar con los hiperparámetros encontrados
 envios= 8000
@@ -171,6 +170,7 @@ param_optimizados <- list( learning_rate= 0.1939022,
 param_variable  <- list(  early_stopping_rounds= as.integer(50 + 5/param_optimizados$learning_rate) )
 
 param_completo  <- c( param_basicos, param_variable, param_optimizados )
+param_completo <- c(param_basicos, param_optimizados)
 
 set.seed( PARAM$hyperparametertuning$semilla_azar )
 modelo  <- lgb.train( data= dtrain,
@@ -179,10 +179,7 @@ modelo  <- lgb.train( data= dtrain,
                      #verbose= -100
 )
 
-dapply <- data.matrix(dataset [foto_mes == PARAM$input$future ] )
-
-
-preds <- predict(modelocv, newdata=dpredict, type="response")
+dapply <- dataset [foto_mes == PARAM$input$future ]
 
 
 prediccion  <- predict( modelo, 

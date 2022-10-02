@@ -46,7 +46,7 @@ hs <- makeParamSet(
 #  muy pronto esto se leera desde un archivo formato .yaml
 PARAM  <- list()
 
-PARAM$experimento  <- "001"
+PARAM$experimento  <- "002"
 
 PARAM$input$dataset       <- "./datasets/competencia2_2022.csv.gz"
 PARAM$input$training      <- c( 202103 )
@@ -55,7 +55,7 @@ PARAM$input$train_test      <- c( 202103,202105 )
 PARAM$trainingstrategy$undersampling  <-  1.0   # un undersampling de 0.1  toma solo el 10% de los CONTINUA
 PARAM$trainingstrategy$semilla_azar   <- semillas[1]  #Aqui poner la propia semilla
 
-PARAM$hyperparametertuning$iteraciones <- 40
+PARAM$hyperparametertuning$iteraciones <- 500
 PARAM$hyperparametertuning$xval_folds  <- 5
 PARAM$hyperparametertuning$POS_ganancia  <- 78000
 PARAM$hyperparametertuning$NEG_ganancia  <- -2000
@@ -269,7 +269,6 @@ if( file.exists(klog) )
 
 #paso la clase a binaria que tome valores {0,1}  enteros
 dataset[ foto_mes %in% PARAM$input$training, clase01 := ifelse( clase_ternaria=="CONTINUA", 0L, 1L) ]
-campos_buenos  <- setdiff( colnames(dataset), c("clase_ternaria","clase01", "azar", "training" ) )
 
 marzo <- dataset[foto_mes %in% PARAM$input$training ]
 clase01 <- ifelse(marzo$clase_ternaria == "CONTINUA", 0, 1)
@@ -295,6 +294,8 @@ dataset <- as.data.table(as.matrix( xgb.create.features(model = xgb_model, data.
 dataset [, clase01 := clase01_total]
 
 rm(list = c("marzo","xgb_model","clase01","clase01_total","dtrain_xgb"))
+
+campos_buenos  <- setdiff( colnames(dataset), c("clase_ternaria","clase01", "azar", "training" ) )
 
 
 
