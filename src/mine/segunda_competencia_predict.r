@@ -145,8 +145,6 @@ dtrain  <- lgb.Dataset( data= data.matrix(  dataset[ training == 1L, campos_buen
 envios= 8000
 GLOBAL_envios <<- as.integer(envios/PARAM$hyperparametertuning$xval_folds)   #asigno la variable global
 
-kfolds  <- PARAM$hyperparametertuning$xval_folds   # cantidad de folds para cross validation
-
 param_basicos  <- list( objective= "binary",
                         metric= "custom",
                         first_metric_only= TRUE,
@@ -175,10 +173,8 @@ param_variable  <- list(  early_stopping_rounds= as.integer(50 + 5/param_optimiz
 param_completo  <- c( param_basicos, param_variable, param_optimizados )
 
 set.seed( PARAM$hyperparametertuning$semilla_azar )
-modelo  <- lgb.cv( data= dtrain,
+modelo  <- lgb.train( data= dtrain,
                      eval= fganancia_logistic_lightgbm,
-                     stratified= TRUE, #sobre el cross validation
-                     nfold= kfolds,    #folds del cross validation
                      param= param_completo
                      #verbose= -100
 )
