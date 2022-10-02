@@ -53,6 +53,7 @@ dataset  <- dataset[  foto_mes %in% c( 202101, 202102, 202103 ) ]
 
 montos <- grep("^c.*",colnames(dataset))
 
+#dataset[, lapply(.SD, log), .SDcols = sapply(dataset, is.numeric)]
 
 cols <- c()
 for (col in montos){

@@ -42,10 +42,10 @@ hs <- makeParamSet(
   makeNumericParam("lambda_l2",        lower=   0.0  , upper=   10),
   makeNumericParam("min_gain_to_split",lower=   0.0  , upper=   2),
   makeIntegerParam("envios",           lower=   2000L, upper=   20000L),
-  makeIntegerParam("bajas_unidas",     default=FALSE),
-  makeLogicalParam("unir_tarjetas",    default=FALSE),
-  makeLogicalParam("generar_estables",    default=FALSE),
-  makeLogicalParam("sacar_drifteadas",    default=FALSE),
+  makeIntegerParam("bajas_unidas",     lower=   0    , upper=   1),
+  makeIntegerParam("unir_tarjetas",    lower=   0    , upper=   1),
+  makeIntegerParam("generar_estables", lower=   0    , upper=   1),
+  makeIntegerParam("sacar_drifteadas", lower=   0    , upper=   1)
 )
 
 #defino los parametros de la corrida, en una lista, la variable global  PARAM
@@ -116,7 +116,7 @@ fganancia_logistic_lightgbm  <- function( probs, datos)
 #esta funcion solo puede recibir los parametros que se estan optimizando
 #el resto de los parametros se pasan como variables globales, la semilla del mal ...
 
-EstimarGanancia_lightgbm  <- function( x, dataset )
+EstimarGanancia_lightgbm  <- function( x )
 {
   gc()  #libero memoria
   
@@ -128,10 +128,10 @@ EstimarGanancia_lightgbm  <- function( x, dataset )
   
   kfolds  <- PARAM$hyperparametertuning$xval_folds   # cantidad de folds para cross validation
   
-  dataset <- unir_tarjetas(dataset,x)
-  dataset <- generar_estables(dataset,x)
-  dataset <- sacar_drifteadas(dataset,x)
-  dtrain <- data_wrangle(dataset,x)
+  dataset <- unir_tarjetas(x)
+  dataset <- generar_estables(x)
+  dataset <- sacar_drifteadas(x)
+  dtrain <- data_wrangle(x)
   
   param_basicos  <- list( objective= "binary",
                           metric= "custom",
@@ -200,7 +200,7 @@ EstimarGanancia_lightgbm  <- function( x, dataset )
   return( ganancia_normalizada )
 }
 
-unir_tarjetas <- function(dataset,x){
+unir_tarjetas <- function(x){
   if (x$unir_tarjetas){
     dataset [, ccajas_otras := NULL]
     dataset [, VisaMaster_Fvencimiento_min := pmin(Visa_Fvencimiento, Master_Fvencimiento)]
@@ -235,7 +235,7 @@ unir_tarjetas <- function(dataset,x){
   }
 }
 
-generar_estables <- function(dataset,x){
+generar_estables <- function(x){
   if (x$generar_estables){
     dataset [, uso_estables_pr := rowSums(.SD), .SDcols = c('cprestamos_personales','cprestamos_prendarios','cprestamos_hipotecarios','cplazo_fijo','cinversion1','cinversion2','cseguro_vida','cseguro_auto','cseguro_vivienda','cseguro_accidentes_personales','ccaja_seguridad')]
     dataset [,uso_estables_pr_bool := uso_estables_pr > 0 ]
@@ -244,7 +244,7 @@ generar_estables <- function(dataset,x){
   }
 }
 
-sacar_drifteadas <- function(dataset,x){
+sacar_drifteadas <- function(x){
   if (x$sacar_drifteadas){
     dataset [, mcomisiones := NULL ]    
     dataset [, mcomisiones_otras := NULL ]
@@ -258,7 +258,7 @@ sacar_drifteadas <- function(dataset,x){
   }
 }
 
-data_wrangle <- function(dataset,x){
+data_wrangle <- function(x){
   
   #paso la clase a binaria que tome valores {0,1}  enteros
   if (x$bajas_unidas){
