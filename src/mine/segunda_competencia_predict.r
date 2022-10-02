@@ -6,16 +6,13 @@ require("rlist")
 require("lightgbm")
 require("xgboost")
 
-#paquetes necesarios para la Bayesian Optimization
-require("DiceKriging")
-require("mlrMBO")
 
 if (".env" %in% list.files(path=".", pattern=NULL, all.files=TRUE,full.names=FALSE)) {
   readRenviron(".env"); local <- as.logical(Sys.getenv("LOCAL")) } else {local <- FALSE}
 semillas = c(539141, 746773, 448883, 190207, 982343)
 
 PARAM  <- list()
-PARAM$experimento  <- "000"
+PARAM$experimento  <- "001"
 
 PARAM$input$dataset       <- "./datasets/competencia2_2022.csv.gz"
 PARAM$input$training      <- c( 202103 )
@@ -145,7 +142,7 @@ dtrain  <- lgb.Dataset( data= data.matrix(  dataset[ training == 1L, campos_buen
                         free_raw_data= FALSE  )
 
 ###entrenar con los hiperparámetros encontrados
-envios= 8500
+envios= 8000
 GLOBAL_envios <<- as.integer(envios/PARAM$hyperparametertuning$xval_folds)   #asigno la variable global
 
 kfolds  <- PARAM$hyperparametertuning$xval_folds   # cantidad de folds para cross validation
@@ -166,10 +163,10 @@ param_basicos  <- list( objective= "binary",
                         seed= PARAM$hyperparametertuning$semilla_azar
 )
 
-param_optimizados <- list( learning_rate= 0.0005,
-                           feature_fraction= 0.6,
-                           min_data_in_leaf= 500,
-                           num_leaves= 500
+param_optimizados <- list( learning_rate= 0.1939022,
+                           feature_fraction= 0.8829033,
+                           min_data_in_leaf= 3558,
+                           num_leaves= 149
 )
 
 #el parametro discolo, que depende de otro
@@ -182,8 +179,8 @@ modelo  <- lgb.cv( data= dtrain,
                      eval= fganancia_logistic_lightgbm,
                      stratified= TRUE, #sobre el cross validation
                      nfold= kfolds,    #folds del cross validation
-                     param= param_completo,
-                     verbose= -100
+                     param= param_completo
+                     #verbose= -100
 )
 
 dapply <- data.matrix(dataset [foto_mes == PARAM$input$future ] )
