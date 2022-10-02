@@ -179,6 +179,8 @@ project/target
 
 # Scala - IDE specific
 .scala_dependencies
+
+.env
 .worksheet
 
 .vscode/settings.json
