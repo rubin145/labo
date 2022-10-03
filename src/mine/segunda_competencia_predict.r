@@ -6,13 +6,19 @@ require("rlist")
 require("lightgbm")
 require("xgboost")
 
+x = list()
+x$unir_tarjetas = 0
+x$generar_estables = 0
+x$sacar_drifteadas = 0
+x$bajas_unidas = 1
+
 
 if (".env" %in% list.files(path=".", pattern=NULL, all.files=TRUE,full.names=FALSE)) {
   readRenviron(".env"); local <- as.logical(Sys.getenv("LOCAL")) } else {local <- FALSE}
 semillas = c(539141, 746773, 448883, 190207, 982343)
 
 PARAM  <- list()
-PARAM$experimento  <- "002"
+PARAM$experimento  <- "0011_250"
 
 PARAM$input$dataset       <- "./datasets/competencia2_2022.csv.gz"
 PARAM$input$training      <- c( 202103 )
@@ -58,45 +64,65 @@ dataset <- dataset [foto_mes %in% PARAM$input$train_test]
 
 
 ### agrego FE ###
+if (x$unir_tarjetas){
+  #saco las columnas en las que detecto concept drifting
+  dataset [, VisaMaster_Fvencimiento_min := pmin(Visa_Fvencimiento, Master_Fvencimiento)]
+  dataset [, VisaMaster_Fvencimiento_max := pmax(Visa_Fvencimiento, Master_Fvencimiento)]
+  dataset [, VisaMaster_Finiciomora_min := pmin(Visa_Finiciomora, Master_Finiciomora)]
+  dataset [, VisaMaster_Finiciomora_max := pmax(Visa_Finiciomora, Master_Finiciomora)]
+  dataset [, VisaMaster_mlimitecompra_min := pmin(Visa_mlimitecompra, Master_mlimitecompra)]
+  dataset [, VisaMaster_mlimitecompra_max := pmax(Visa_mlimitecompra, Master_mlimitecompra)]
+  dataset [, VisaMaster_fultimo_cierre_min := pmin(Visa_fultimo_cierre, Master_fultimo_cierre)]
+  dataset [, VisaMaster_fultimo_cierre_max := pmax(Visa_fultimo_cierre, Master_fultimo_cierre)]
+  dataset [, VisaMaster_fechaalta_min := pmin(Visa_fechaalta, Master_fechaalta)]
+  dataset [, VisaMaster_fechaalta_max := pmax(Visa_fechaalta, Master_fechaalta)]
+  dataset [, VisaMaster_delinquency := rowSums(.SD), .SDcols = c('Visa_delinquency','Master_delinquency')]
+  dataset [, VisaMaster_mfinanciacion_limite := rowSums(.SD), .SDcols = c('Visa_mfinanciacion_limite','Master_mfinanciacion_limite')]
+  dataset [, VisaMaster_msaldototal := rowSums(.SD), .SDcols = c('Visa_msaldototal','Master_msaldototal')]
+  dataset [, VisaMaster_msaldopesos := rowSums(.SD), .SDcols = c('Visa_msaldopesos','Master_msaldopesos')]
+  dataset [, VisaMaster_msaldodolares := rowSums(.SD), .SDcols = c('Visa_msaldodolares','Master_msaldodolares')]
+  dataset [, VisaMaster_mconsumospesos := rowSums(.SD), .SDcols = c('Visa_mconsumospesos','Master_mconsumospesos')]
+  dataset [, VisaMaster_mconsumosdolares := rowSums(.SD), .SDcols = c('Visa_mconsumosdolares','Master_mconsumosdolares')]
+  dataset [, VisaMaster_mlimitecompra := rowSums(.SD), .SDcols = c('Visa_mlimitecompra','Master_mlimitecompra')]
+  dataset [, VisaMaster_madelantopesos := rowSums(.SD), .SDcols = c('Visa_madelantopesos','Master_madelantopesos')]
+  dataset [, VisaMaster_madelantodolares := rowSums(.SD), .SDcols = c('Visa_madelantodolares','Master_madelantodolares')]
+  dataset [, VisaMaster_mpagado := rowSums(.SD), .SDcols = c('Visa_mpagado','Master_mpagado')]
+  dataset [, VisaMaster_mpagospesos := rowSums(.SD), .SDcols = c('Visa_mpagospesos','Master_mpagospesos')]
+  dataset [, VisaMaster_mpagosdolares := rowSums(.SD), .SDcols = c('Visa_mpagosdolares','Master_mpagosdolares')]
+  dataset [, VisaMaster_mconsumototal := rowSums(.SD), .SDcols = c('Visa_mconsumototal','Master_mconsumototal')]
+  dataset [, VisaMaster_cconsumos := rowSums(.SD), .SDcols = c('Visa_cconsumos','Master_cconsumos')]
+  dataset [, VisaMaster_cadelantosefectivo := rowSums(.SD), .SDcols = c('Visa_cadelantosefectivo','Master_cadelantosefectivo')]
+  dataset [, VisaMaster_mpagominimo := rowSums(.SD), .SDcols = c('Visa_mpagominimo','Master_mpagominimo')]
+  #con esto saco las columnas Visa_ y Master_ originales.
+  dataset [, grep("^(Master_|Visa_).*", colnames(dataset)):=NULL]
+}
+if (x$generar_estables){
+  
+  dataset [, uso_estables_pr := rowSums(.SD), .SDcols = c('cprestamos_personales','cprestamos_prendarios','cprestamos_hipotecarios','cplazo_fijo','cinversion1','cinversion2','cseguro_vida','cseguro_auto','cseguro_vivienda','cseguro_accidentes_personales','ccaja_seguridad')]
+  dataset [,uso_estables_pr_bool := uso_estables_pr > 0 ]
+  dataset [, uso_estables_tr := rowSums(.SD), .SDcols = c('ctarjeta_debito_transacciones','ctarjeta_visa_transacciones','ctarjeta_master_transacciones','cpayroll_trx','cpayroll2_trx','ctarjeta_master_debitos_automaticos','ctarjeta_visa_debitos_automaticos')]
+  dataset [,uso_estables_tr_bool := uso_estables_tr > 0 ]
+}
 
-#saco las columnas en las que detecto concept drifting
-dataset [, ccajas_otras := NULL]
-dataset [, VisaMaster_Fvencimiento_min := pmin(Visa_Fvencimiento, Master_Fvencimiento)]
-dataset [, VisaMaster_Fvencimiento_max := pmax(Visa_Fvencimiento, Master_Fvencimiento)]
-dataset [, VisaMaster_Finiciomora_min := pmin(Visa_Finiciomora, Master_Finiciomora)]
-dataset [, VisaMaster_Finiciomora_max := pmax(Visa_Finiciomora, Master_Finiciomora)]
-dataset [, VisaMaster_mlimitecompra_min := pmin(Visa_mlimitecompra, Master_mlimitecompra)]
-dataset [, VisaMaster_mlimitecompra_max := pmax(Visa_mlimitecompra, Master_mlimitecompra)]
-dataset [, VisaMaster_fultimo_cierre_min := pmin(Visa_fultimo_cierre, Master_fultimo_cierre)]
-dataset [, VisaMaster_fultimo_cierre_max := pmax(Visa_fultimo_cierre, Master_fultimo_cierre)]
-dataset [, VisaMaster_fechaalta_min := pmin(Visa_fechaalta, Master_fechaalta)]
-dataset [, VisaMaster_fechaalta_max := pmax(Visa_fechaalta, Master_fechaalta)]
-dataset [, VisaMaster_delinquency := rowSums(.SD), .SDcols = c('Visa_delinquency','Master_delinquency')]
-dataset [, VisaMaster_mfinanciacion_limite := rowSums(.SD), .SDcols = c('Visa_mfinanciacion_limite','Master_mfinanciacion_limite')]
-dataset [, VisaMaster_msaldototal := rowSums(.SD), .SDcols = c('Visa_msaldototal','Master_msaldototal')]
-dataset [, VisaMaster_msaldopesos := rowSums(.SD), .SDcols = c('Visa_msaldopesos','Master_msaldopesos')]
-dataset [, VisaMaster_msaldodolares := rowSums(.SD), .SDcols = c('Visa_msaldodolares','Master_msaldodolares')]
-dataset [, VisaMaster_mconsumospesos := rowSums(.SD), .SDcols = c('Visa_mconsumospesos','Master_mconsumospesos')]
-dataset [, VisaMaster_mconsumosdolares := rowSums(.SD), .SDcols = c('Visa_mconsumosdolares','Master_mconsumosdolares')]
-dataset [, VisaMaster_mlimitecompra := rowSums(.SD), .SDcols = c('Visa_mlimitecompra','Master_mlimitecompra')]
-dataset [, VisaMaster_madelantopesos := rowSums(.SD), .SDcols = c('Visa_madelantopesos','Master_madelantopesos')]
-dataset [, VisaMaster_madelantodolares := rowSums(.SD), .SDcols = c('Visa_madelantodolares','Master_madelantodolares')]
-dataset [, VisaMaster_mpagado := rowSums(.SD), .SDcols = c('Visa_mpagado','Master_mpagado')]
-dataset [, VisaMaster_mpagospesos := rowSums(.SD), .SDcols = c('Visa_mpagospesos','Master_mpagospesos')]
-dataset [, VisaMaster_mpagosdolares := rowSums(.SD), .SDcols = c('Visa_mpagosdolares','Master_mpagosdolares')]
-dataset [, VisaMaster_mconsumototal := rowSums(.SD), .SDcols = c('Visa_mconsumototal','Master_mconsumototal')]
-dataset [, VisaMaster_cconsumos := rowSums(.SD), .SDcols = c('Visa_cconsumos','Master_cconsumos')]
-dataset [, VisaMaster_cadelantosefectivo := rowSums(.SD), .SDcols = c('Visa_cadelantosefectivo','Master_cadelantosefectivo')]
-dataset [, VisaMaster_mpagominimo := rowSums(.SD), .SDcols = c('Visa_mpagominimo','Master_mpagominimo')]
-#con esto saco las columnas Visa_ y Master_ originales.
-#dataset [, grep("^(Master_|Visa_).*", colnames(dataset)):=NULL]
 
-dataset [, uso_estables_pr := rowSums(.SD), .SDcols = c('cprestamos_personales','cprestamos_prendarios','cprestamos_hipotecarios','cplazo_fijo','cinversion1','cinversion2','cseguro_vida','cseguro_auto','cseguro_vivienda','cseguro_accidentes_personales','ccaja_seguridad')]
-dataset [,uso_estables_pr_bool := uso_estables_pr > 0 ]
-dataset [, uso_estables_tr := rowSums(.SD), .SDcols = c('ctarjeta_debito_transacciones','ctarjeta_visa_transacciones','ctarjeta_master_transacciones','cpayroll_trx','cpayroll2_trx','ctarjeta_master_debitos_automaticos','ctarjeta_visa_debitos_automaticos')]
-dataset [,uso_estables_tr_bool := uso_estables_tr > 0 ]
+if(x$sacar_drifteadas){
+  dataset [, mcomisiones := NULL ]    
+  dataset [, mcomisiones_otras := NULL ]
+  dataset [, mpayroll := NULL ]
+  dataset [, ccajas_otras := NULL ]   
+  dataset [, mcaja_ahorro_dolares := NULL ]
+  dataset [, mcheques_emitidos_rechazados := NULL ]
+  dataset [, mcuenta_corriente_adicional := NULL ]
+  dataset [, mpayroll2 := NULL ]
+  dataset [, mforex_buy := NULL ]
+}
 
-dataset[ foto_mes %in% PARAM$input$training, clase01 := ifelse( clase_ternaria=="CONTINUA", 0L, 1L) ]
+
+if (x$bajas_unidas){
+  dataset[ foto_mes %in% PARAM$input$training, clase01 := ifelse( clase_ternaria=="CONTINUA", 0L, 1L) ]
+} else {
+  dataset[ foto_mes %in% PARAM$input$training, clase01 := ifelse( clase_ternaria=="BAJA+2", 1L, 0L) ]
+}
 
 marzo <- dataset[foto_mes %in% PARAM$input$training ]
 clase01 <- ifelse(marzo$clase_ternaria == "CONTINUA", 0, 1)
@@ -145,25 +171,28 @@ envios= 8000
 GLOBAL_envios <<- as.integer(envios/PARAM$hyperparametertuning$xval_folds)   #asigno la variable global
 
 param_basicos  <- list( objective= "binary",
-                        metric= "custom",
+                        #metric= "custom",
                         first_metric_only= TRUE,
                         boost_from_average= TRUE,
                         feature_pre_filter= FALSE,
                         verbosity= -100,
                         max_depth=  -1,         # -1 significa no limitar,  por ahora lo dejo fijo
-                        min_gain_to_split= 0.0, #por ahora, lo dejo fijo
-                        lambda_l1= 0.0,         #por ahora, lo dejo fijo
-                        lambda_l2= 0.0,         #por ahora, lo dejo fijo
+                        #min_gain_to_split= 0.0, #por ahora, lo dejo fijo
+                        #lambda_l1= 0.0,         #por ahora, lo dejo fijo
+                        #lambda_l2= 0.0,         #por ahora, lo dejo fijo
                         max_bin= 31,            #por ahora, lo dejo fijo
                         num_iterations= 9999,   #un numero muy grande, lo limita early_stopping_rounds
                         force_row_wise= TRUE,   #para que los alumnos no se atemoricen con tantos warning
                         seed= PARAM$hyperparametertuning$semilla_azar
 )
 
-param_optimizados <- list( learning_rate= 0.1939022,
-                           feature_fraction= 0.8829033,
-                           min_data_in_leaf= 3558,
-                           num_leaves= 149
+param_optimizados <- list( learning_rate= 0.360072,
+                           feature_fraction= 0.7776291,
+                           min_data_in_leaf= 5213,
+                           num_leaves= 694,
+                           lambda_l1 =7.359778,
+                           lambda_l2 = 2.350039,
+                           min_gain_to_split = 0.8934306
 )
 
 #el parametro discolo, que depende de otro
@@ -174,9 +203,9 @@ param_completo <- c(param_basicos, param_optimizados)
 
 set.seed( PARAM$hyperparametertuning$semilla_azar )
 modelo  <- lgb.train( data= dtrain,
-                     eval= fganancia_logistic_lightgbm,
-                     param= param_completo
-                     #verbose= -100
+                      #eval= fganancia_logistic_lightgbm,
+                      param= param_completo
+                      #verbose= -100
 )
 
 dapply <- dataset [foto_mes == PARAM$input$future ]
@@ -206,7 +235,7 @@ setorder( tb_entrega, -prob )
 
 #genero archivos con los  "envios" mejores
 #deben subirse "inteligentemente" a Kaggle para no malgastar submits
-cortes <- seq( 8000, 13000, by=500 )
+cortes <- seq( 2000, 20000, by=500 )
 for( envios  in  cortes )
 {
   tb_entrega[  , Predicted := 0L ]
