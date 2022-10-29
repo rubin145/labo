@@ -49,15 +49,15 @@ param_lgb_basicos  <- list(
    feature_pre_filter= FALSE,
    force_row_wise= TRUE,           #para que los alumnos no se atemoricen con tantos warning
    verbosity= -100,
-   max_depth=  -1,                 # -1 significa no limitar,  por ahora lo dejo fijo
-   min_gain_to_split= 0.0,         #por ahora, lo dejo fijo
+   #max_depth=  -1,                 # -1 significa no limitar,  por ahora lo dejo fijo
+   #min_gain_to_split= 0.0,         #por ahora, lo dejo fijo
    min_sum_hessian_in_leaf= 0.001, #por ahora, lo dejo fijo
-   lambda_l1= 0.0,                 #por ahora, lo dejo fijo
-   lambda_l2= 0.0,                 #por ahora, lo dejo fijo
+   #lambda_l1= 0.0,                 #por ahora, lo dejo fijo
+   #lambda_l2= 0.0,                 #por ahora, lo dejo fijo
    max_bin= 31,                    #por ahora, lo dejo fijo
    num_iterations= 9999,           #un numero muy grande, lo limita early_stopping_rounds
 
-   bagging_fraction= 1.0,          #por ahora, lo dejo fijo
+   #bagging_fraction= 1.0,          #por ahora, lo dejo fijo
    pos_bagging_fraction= 1.0,      #por ahora, lo dejo fijo
    neg_bagging_fraction= 1.0,      #por ahora, lo dejo fijo
 
@@ -76,7 +76,12 @@ hs <- makeParamSet(
          makeNumericParam("learning_rate",    lower=    0.01, upper=  0.3),
          makeNumericParam("feature_fraction", lower=    0.2 , upper=  0.8),
          makeNumericParam("coverage",         lower=    0.05, upper=  1.0),
-         makeNumericParam("leaf_size_log",    lower=    1.0 , upper= 12.0)
+         makeNumericParam("leaf_size_log",    lower=    1.0 , upper= 12.0),
+         makeNumericParam("max_depth",        lower=    -1  , upper= 20),
+         makeNumericParam("min_gain_to_split",lower=    0.0 , upper= 1000),
+         makeNumericParam("lambda1",          lower=    0.0 , upper= 5.0),
+         makeNumericParam("lambda2",          lower=    0.0 , upper= 5.0),
+         makeNumericParam("bagging_fraction", lower=    0.01, upper= 1)
         )
 
 
