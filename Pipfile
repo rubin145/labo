@@ -1,0 +1,18 @@
+[[source]]
+url = "https://pypi.python.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+lightgbm = "*"
+pandas = "*"
+shap = "*"
+umap-learn = "*"
+matplotlib = "*"
+sklearn = "*"
+seaborn = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.8"
