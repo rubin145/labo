@@ -15,12 +15,13 @@ require("lightgbm")
 
 #Parametros del script
 PARAM  <- list()
-PARAM$experimento  <- "EC04-6-results"
-PARAM$exp_input  <- "EC04-5-underBO"
+PARAM$exp_col <- "04"
+PARAM$experimento  <- paste0("EC",PARAM$exp_col,"-6-results")
+PARAM$exp_input  <- paste0("EC",PARAM$exp_col,"-5-underBO")
 
 PARAM$modelos  <- 5
 # FIN Parametros del script
-
+#semillas = c(539141, 746773, 448883, 190207, 982343)
 ksemilla  <- 936659
 
 #------------------------------------------------------------------------------
@@ -62,7 +63,7 @@ dataset[ , clase01 := ifelse( clase_ternaria %in% c("BAJA+1","BAJA+2"), 1, 0 )  
 
 campos_buenos  <- setdiff( colnames(dataset), c( "clase_ternaria", "clase01") )
 
-
+df_true <- fread("../../../datasets/202107.csv")
 #genero un modelo para cada uno de las modelos_qty MEJORES iteraciones de la Bayesian Optimization
 for( i in  1:PARAM$modelos )
 {
@@ -153,12 +154,17 @@ for( i in  1:PARAM$modelos )
   
   #genero los archivos para Kaggle
   cortes  <- seq( from=  7000,
-                  to=   11000,
-                  by=     500 )
+                  to=   15000,
+                  by=     2500 )
   
   
   setorder( tb_prediccion, -prob )
   
+  
+  
+  df_all <- df_true[tb_prediccion,on='numero_de_cliente']
+  setorder( df_all, -prob )
+  ganancias=data.table(corte=numeric(), ganancia=numeric())
   for( corte in cortes )
   {
     tb_prediccion[  , Predicted := 0L ]
@@ -177,8 +183,21 @@ for( i in  1:PARAM$modelos )
              file= nom_submit,
              sep= "," )
     
+    
+    df_all[  , Predicted := 0L ]
+    df_all[ 1:corte, Predicted := 1L ]
+    df_all[, ganancia := 78000 * (Predicted == 1 & true_class == 1) + (-2000) * (Predicted == 1 & true_class == 0)]
+    ganancia <- round(colSums(df_all[,'ganancia']) / 1000000, digits=5)
+    new_row    <- data.table("corte" = corte, "ganancia" = ganancia)
+    ganancias <- rbindlist(list(ganancias, new_row))
+    
   }
+  modelo = paste0(PARAM$exp_col,'_',iteracion_bayesiana)
+  ganancias[,modelo := modelo]
   
+  fwrite(  ganancias,
+           file= paste0('ganancias_',modelo,'.csv'),
+           sep= "," )
   
   #borro y limpio la memoria para la vuelta siguiente del for
   rm( tb_prediccion )
