@@ -26,9 +26,9 @@
 #   
 #   ganancias <- ganancias %>% add_row(corte=corte,ganancia=ganancia)
 # }
-# ganancias <- ganancias %>% mutate(modelo = paste0(exp,'_',model_name))
+# ganancias <- ganancias %>% mutate(modelo = paste0(exp,"_",model_nmbr,'_',model_name))
 # 
-# write.csv(ganancias,paste0('ganancias_',exp,'_',model_name,'.csv'),row.names=FALSE)
+# write.csv(ganancias,paste0('ganancias_',exp,"_",model_nmbr,'_',model_name,'.csv'),row.names=FALSE)
 
 
 ##lo mismo pero en data.table
@@ -63,8 +63,8 @@ for (corte in cortes){
   new_row    <- data.table("corte" = corte, "ganancia" = ganancia)
   ganancias <- rbindlist(list(ganancias, new_row))
 }
-ganancias[,modelo := paste0(exp,'_',model_name)]
+ganancias[,modelo := paste0(exp,"_",model_nmbr,'_',model_name)]
 
 fwrite(  ganancias,
-         file= paste0('ganancias_',exp,'_',model_name,'.csv'),
+         file= paste0('ganancias_',exp,"_",model_nmbr,'_',model_name,'.csv'),
          sep= "," )

@@ -192,7 +192,7 @@ for( i in  1:PARAM$modelos )
     ganancias <- rbindlist(list(ganancias, new_row))
     
   }
-  modelo = paste0(PARAM$exp_col,'_',iteracion_bayesiana)
+  modelo = paste0(PARAM$exp_col,'_',sprintf( "%02d", i ),sprintf( "%03d", iteracion_bayesiana ))
   ganancias[,modelo := modelo]
   
   fwrite(  ganancias,
