@@ -193,7 +193,12 @@ for( i in  1:PARAM$modelos )
     
   }
   modelo = paste0(PARAM$exp_col,'_',sprintf( "%02d", i ),"_",sprintf( "%03d", iteracion_bayesiana ))
-  ganancias[,modelo := modelo]
+  ganancias[, modelo := modelo]
+  ganancias[, num_iterations := modelo_final$params$num_iterations]
+  ganancias[, learning_rate := modelo_final$params$learning_rate]
+  ganancias[, num_leaves := modelo_final$params$num_leaves]
+  ganancias[, feature_fraction := modelo_final$params$feature_fraction]
+  ganancias[, min_data_in_leaf := modelo_final$params$min_data_in_leaf]
   
   fwrite(  ganancias,
            file= paste0('ganancias_',modelo,'.csv'),
