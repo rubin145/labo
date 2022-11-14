@@ -17,7 +17,7 @@ for (dir in list.dirs(full.names=TRUE,recursive=FALSE)){
 mejores <- todos %>%
   group_by(modelo) %>%
   filter(ganancia == max(ganancia)) %>%
-  arrange(modelo)
+  arrange(modelo) %>% distinct(modelo, .keep_all= TRUE)
 
 write.csv(mejores,paste0('mejores.csv'),row.names=FALSE)
 
