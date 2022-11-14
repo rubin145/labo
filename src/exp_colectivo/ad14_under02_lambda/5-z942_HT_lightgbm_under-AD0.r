@@ -79,12 +79,12 @@ param_lgb_basicos  <- list(
 #Aqui se cargan los hiperparametros que se optimizan en la Bayesian Optimization
 hs <- makeParamSet( 
   makeNumericParam("lambda1",          lower=    0.0 , upper= 5.0),
-  makeNumericParam("lambda2",          lower=    0.0 , upper= 5.0),
+  makeNumericParam("lambda2",          lower=    0.0 , upper= 5.0)
 )
 
 
 #si usted es ambicioso, y tiene paciencia, podria subir este valor a 100
-kBO_iteraciones  <- 50  #iteraciones de la Optimizacion Bayesiana
+kBO_iteraciones  <- 75  #iteraciones de la Optimizacion Bayesiana
 
 #------------------------------------------------------------------------------
 #graba a un archivo los componentes de lista
