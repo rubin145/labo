@@ -1,0 +1,101 @@
+---
+title: ""
+output: html_notebook
+editor_options: 
+  chunk_output_type: inline
+---
+```{r}
+
+rm(list=ls())
+
+library(dplyr)
+library(ggplot2)
+library(ggpmisc)
+library(tidyverse)
+
+```
+
+```{r}
+
+base_path <- "/home/user/projects/dmeyf_R/exp/colectivos/"
+setwd(base_path)
+
+todos <- data.frame(corte=numeric(), ganancia=numeric(),modelo=character())
+
+for (dir in list.dirs(full.names=TRUE,recursive=FALSE)){
+  todos_exp <- list.files(path = dir,
+                         pattern = "ganancias.*.csv", full.names = TRUE) %>% 
+    lapply(read.csv) %>%
+    bind_rows
+  todos <- bind_rows(todos,todos_exp)
+}
+rm(todos_exp,dir)
+
+modelos <- read.csv('modelos.csv')
+
+```
+
+```{r}
+
+mejores_modelos <- c('00_03_084','03_03_064','04_01_042','05_02_026','06_05_063','07_04_018')
+todos %>% filter(modelo %in% mejores_modelos) %>% group_by(modelo) %>% 
+  mutate(modelo_max = case_when(ganancia == max(ganancia) 
+           ~ as.character(modelo), TRUE ~ "")) %>% 
+  ggplot(aes(x = corte, y = ganancia, color =modelo, group = modelo)) +
+  geom_line() +
+  geom_segment(aes(x=13000, y=44, xend=13000, yend=50) , linetype="dashed", color = "red") +
+  stat_peaks(span = NULL, show.legend=TRUE, y.label.fmt="%a") +
+  stat_peaks(span = NULL, geom = "text", vjust = -0.5, color = "black", size=3, 
+             aes(label = paste(after_stat(y.label)))) +
+  stat_peaks(geom = "vline", color = "gray", size=0.5, linetype='dashed', span=NULL) + 
+  geom_text(aes(label = substring(modelo_max,1,2)), color='#605F5E', nudge_y = 0.4, size=3.5, show.legend = FALSE) +
+  scale_x_continuous(breaks=c(7000,7500,8000,8500,9000,9500,10000,10500,11000,11500,12000,12500,13000,13500,14000,14500,15000),guide = guide_axis(angle = 60)) +
+  theme_classic()
+
+```
+
+```{r}
+
+#mejores_modelos <- c('00_03_084','03_03_064','04_01_042','05_02_026','06_05_063','07_04_018')
+todos %>% group_by(modelo) %>% 
+  mutate(modelo_max = case_when(ganancia == max(ganancia) 
+           ~ as.character(modelo), TRUE ~ "")) %>% 
+  ggplot(aes(x = corte, y = ganancia, color =modelo, group = modelo)) +
+  geom_line(size=0.3) +
+  geom_segment(aes(x=13000, y=44, xend=13000, yend=50) , linetype="dashed", color = "red") +
+  stat_peaks(colour = "black", span = NULL, show.legend=TRUE, y.label.fmt="%a") +
+  #stat_peaks(span = NULL, geom = "text", vjust = -0.5, color = "black", size=3, 
+  #           aes(label = paste(after_stat(y.label)))) +
+  #stat_peaks(geom = "vline", color = "gray", size=0.5, linetype='dashed', span=NULL) + 
+  #geom_text(aes(label = modelo_max),  nudge_y = 0.5, size=2.5, show.legend = FALSE) +
+  scale_x_continuous(breaks=c(7000,7500,8000,8500,9000,9500,10000,10500,11000,11500,12000,12500,13000,13500,14000,14500,15000),guide = guide_axis(angle = 60)) +
+  theme_classic()
+
+```
+
+```{r}
+
+colores <- c("#00B0F6","#A3A500","#E76BF3","#F8766D","#00BF7D")
+parametros <- c('num_iterations','learning_rate','num_leaves','feature_fraction','min_data_in_leaf')
+i = 0
+for (parametro in parametros){
+  i <- i+1
+  p <- modelos %>% gather(key = 'param', value = 'valor', -modelo) %>%
+    filter(param == parametro) %>% 
+    ggplot(aes(x = valor, group = param, fill = param, color = param)) + 
+    geom_density(alpha = 0.3, show.legend = FALSE) + labs(title=parametro) + theme_classic() +
+    scale_fill_manual(values=colores[i:i]) + scale_color_manual(values=colores[i:i])
+  print(p)
+  rm(p,parametro)
+}
+
+```
+
+```{r}
+
+modelos %>% gather(key = 'param', value = 'valor', -modelo) %>%
+  ggplot(aes(x = log(valor), group = param, fill = param, color = param)) + 
+  geom_density(alpha = 0.3) + theme_classic()
+
+```
+
