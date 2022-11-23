@@ -17,7 +17,7 @@ require("lightgbm")
 PARAM  <- list()
 PARAM$exp_col <- "31"
 PARAM$experimento  <- paste0("EC",PARAM$exp_col,"-6-results")
-PARAM$exp_input  <- paste0("EC",PARAM$exp_col,"-5-underBO")
+PARAM$exp_input  <- paste0("EC",PARAM$exp_col,"-4-train_strategy")
 
 PARAM$modelos  <- 1
 # FIN Parametros del script
@@ -67,24 +67,24 @@ dir.create( paste0( base_dir, "exp/colectivos/", PARAM$experimento, "/"), showWa
 setwd(paste0( base_dir, "exp/colectivos/", PARAM$experimento, "/"))   #Establezco el Working Directory DEL EXPERIMENTO
 
 #leo la salida de la optimizaciob bayesiana
-arch_log  <- paste0( base_dir, "exp/colectivos/", PARAM$exp_input, "/BO_log.txt" )
-tb_log  <- fread( arch_log )
-setorder( tb_log, -ganancia )
+#arch_log  <- paste0( base_dir, "exp/colectivos/", PARAM$exp_input, "/BO_log.txt" )
+#tb_log  <- fread( arch_log )
+#setorder( tb_log, -ganancia )
 
 #leo el nombre del expermento de la Training Strategy
-arch_TS  <- paste0( base_dir, "exp/colectivos/", PARAM$exp_input, "/TrainingStrategy.txt" )
-TS  <- readLines( arch_TS, warn=FALSE )
+#arch_TS  <- paste0( base_dir, "exp/colectivos/", PARAM$exp_input, "/TrainingStrategy.txt" )
+#TS  <- readLines( arch_TS, warn=FALSE )
 
 #leo el dataset donde voy a entrenar el modelo final
-arch_dataset  <- paste0( base_dir, "exp/colectivos/", TS, "/dataset_train_final.csv.gz" )
-#arch_validate  <- paste0( base_dir, "exp/colectivos/", TS, "/dataset_validation_final.csv.gz" )
+arch_dataset  <- paste0( base_dir, "exp/colectivos/", PARAM$exp_input, "/dataset_train_final.csv.gz" )
+#arch_validate  <- paste0( base_dir, "exp/colectivos/", PARAM$exp_input, "/dataset_validation_final.csv.gz" )
 
 dataset  <- fread( arch_dataset )
 #validate  <- fread( arch_validate )
 
 
 #leo el dataset donde voy a aplicar el modelo final
-arch_future  <- paste0( base_dir, "exp/colectivos/", TS, "/dataset_future.csv.gz" )
+arch_future  <- paste0( base_dir, "exp/colectivos/", PARAM$exp_input, "/dataset_future.csv.gz" )
 dfuture <- fread( arch_future )
 
 
