@@ -1,0 +1,54 @@
+---
+title: ""
+output: html_notebook
+editor_options: 
+  chunk_output_type: inline
+---
+```{r}
+
+rm(list=ls())
+
+library(dplyr)
+library(ggplot2)
+library(ggpmisc)
+library(tidyverse)
+
+```
+
+```{r}
+
+base_path <- "/home/user/projects/dmeyf_R/exp/colectivosBIS/"
+setwd(base_path)
+
+todos <- data.frame(corte=numeric(), ganancia=numeric(),modelo=character())
+
+for (dir in list.dirs(full.names=TRUE,recursive=FALSE)){
+  todos_exp <- list.files(path = dir,
+                         pattern = "ganancias.*.csv", full.names = TRUE) %>% 
+    lapply(read.csv) %>%
+    bind_rows
+  todos <- bind_rows(todos,todos_exp)
+}
+rm(todos_exp,dir)
+
+```
+
+```{r}
+
+modelo_="00_01_108"
+todos %>% filter(modelo == modelo_) %>%
+  group_by(test) %>% 
+  #mutate(test_max = case_when(ganancia == max(ganancia) 
+  #         ~ as.character(test), TRUE ~ ""))  %>% 
+  mutate(corte_max = case_when(ganancia == max(ganancia) 
+           ~ as.character(corte), TRUE ~ "")) %>% 
+  ggplot(aes(x = proba, y = ganancia, color = test, group = test)) +
+  geom_line() +
+  stat_peaks(span = NULL, show.legend=TRUE, y.label.fmt="%a") +
+  stat_peaks(span = NULL, geom = "text", vjust = -0.5, color = "black", size=3, 
+             aes(label = paste(after_stat(x.label),':',after_stat(y.label)))) +
+  stat_peaks(geom = "vline", color = "gray", size=0.5, linetype='dashed', span=NULL) + 
+  geom_text(aes(label = corte_max), nudge_y=0.3, color='red', show.legend = FALSE) +
+  theme_classic()
+
+```
