@@ -13,16 +13,18 @@ require("data.table")
 
 require("lightgbm")
 
+require("lubridate")
+
 #Parametros del script
 PARAM  <- list()
 PARAM$exp_col <- "31"
-PARAM$experimento  <- paste0("EC",PARAM$exp_col,"-6-results")
-PARAM$exp_input  <- paste0("EC",PARAM$exp_col,"-4-train_strategy")
+PARAM$inp_col <- "21"
 
-PARAM$modelos  <- 1
+PARAM$experimento  <- paste0("EC",PARAM$exp_col,"-6-results")
+PARAM$exp_input  <- paste0("EC",PARAM$inp_col,"-4-train_strategy")
+
 # FIN Parametros del script
 semillas = c(539141, 746773, 448883, 190207, 982343)
-#ksemilla  <- 936659
 
 #------------------------------------------------------------------------------
 options(error = function() { 
@@ -33,6 +35,8 @@ options(error = function() {
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
 #Aqui empieza el programa
+with_tz(Sys.time(),"America/Buenos_Aires")
+
 vprob_optima  <- c()
 
 fganancia_lgbm_meseta  <- function( probs, datos) 
@@ -194,4 +198,5 @@ for (ksemilla in semillas) {
   rm(dtrain,tb_prediccion,tb_importancia,modelo_final)
   
   gc()
+  with_tz(Sys.time(),"America/Buenos_Aires")
 }
