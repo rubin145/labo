@@ -9,8 +9,8 @@ setwd(base_path)
 
 test_name <- 'all'
 
-dir <- './EC21-6-results'
-filename <- 'exp_colectivos_EC21-6-results_pred_539141.csv'
+dir <- './EC31-6-results'
+filename <- 'exp_colectivos_EC31-6-results_pred_539141.csv'
 dirfile <- paste0(dir,'/',filename)
 
 exp <- substr(dir,5,6)

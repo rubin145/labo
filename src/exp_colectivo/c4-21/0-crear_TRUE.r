@@ -31,7 +31,7 @@ dataset  <- fread( PARAM$dataset )
 
 #sintrue <- c(202108,202109)
 #dataset[ !(foto_mes %in% sintrue), ]
-dataset[ , true_class := ifelse( clase_ternaria %in% c("BAJA+1","BAJA+2"), 1, 0 )]
+dataset[ , true_class := ifelse( clase_ternaria == "BAJA+2", 1, 0 )]
 cols <- c("numero_de_cliente","foto_mes","true_class")
 dataset[, setdiff(names(dataset), cols) := NULL][]
 
