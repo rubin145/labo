@@ -35,7 +35,7 @@ options(error = function() {
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
 #Aqui empieza el programa
-with_tz(Sys.time(),"America/Buenos_Aires")
+print(with_tz(Sys.time(),"America/Buenos_Aires"))
 
 vprob_optima  <- c()
 
@@ -126,9 +126,9 @@ parametros  <- list(
   
   extra_trees= FALSE,
   num_iterations = 1962,
-  learning_rate = 0,00515472,
+  learning_rate = 0.00515472,
   num_leaves = 94,
-  feature_fraction = 0,300683,
+  feature_fraction = 0.300683,
   min_data_in_leaf = 2473
   #seed=  ksemilla
 )
@@ -199,6 +199,6 @@ for (ksemilla in semillas) {
   
   gc()
   
-  with_tz(Sys.time(),"America/Buenos_Aires")
+  print(with_tz(Sys.time(),"America/Buenos_Aires"))
 }
 

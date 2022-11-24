@@ -4,17 +4,19 @@ library(stringr)
 library(purrr)
  
 #base_path <- '~/buckets/b1/exp/colectivos/'
-base_path <- '/home/user/projects/dmeyf_R/exp/colectivosBIS/' #local
+base_path <- '/home/user/projects/dmeyf_R/exp/c4/' #local
 setwd(base_path)
-df_true <- read.csv("../../datasets/202107.csv")
-test_name <- '202107'
+df_true <- read.csv("../../datasets/TRUE.csv")
+test_name <- 'all'
 
-eval <- function(filename,true=NULL,exp=NULL,dir=NULL,test_name=NULL){
+eval <- function(filename,true=NULL,exp=NULL,dir=NULL){
+  mes <- as.integer(str_extract(filename,"(?<=_en_)(.*)(?=_prob.csv)"))
   ranks <- list()
-  ranks$min <- 8000
+  ranks$min <- 6000
   ranks$max <- 14000
   tb_prediccion <- read.csv(filename, sep="\t")
   tb_prediccion <- tb_prediccion %>% mutate(prob = round(prob,4)) #### ojo acá
+  true <- true %>% filter(foto_mes == mes)
   df_all <- full_join(tb_prediccion,true,by="numero_de_cliente" ) %>% arrange(desc(prob))
   probs <- df_all[ranks$min:ranks$max,] %>% select(prob) %>% unique() %>% unlist(., use.names=FALSE)
   ganancias <- data.frame(corte=numeric(),ganancia=numeric(),proba=numeric())
@@ -31,14 +33,15 @@ eval <- function(filename,true=NULL,exp=NULL,dir=NULL,test_name=NULL){
     ganancias <- ganancias %>% add_row(corte=corte,ganancia=ganancia,proba=proba)
   }
   modelo = paste0(exp,"_",str_extract(filename,"(?<=pred_)(.*)(?=.csv)"))
-  ganancias <- ganancias %>% mutate(modelo = modelo, test= test_name)
+  ganancias <- ganancias %>% mutate(modelo = modelo, foto_mes= mes)
   
-  write.csv(ganancias,paste0(dir,'/ganancias_',modelo,'_en_',test_name,'_prob.csv'), row.names=FALSE)
+  write.csv(ganancias,paste0(dir,'/ganancias_',modelo,'_en_',as.character(mes) , '_prob.csv'), row.names=FALSE)
+  #write.csv(ganancias,paste0(dir,'/ganancias_',modelo,'_en_',test_name,'_prob.csv'), row.names=FALSE)
 }
 
 for (dir in list.dirs(full.names=TRUE,recursive=FALSE)){
   exp <- substr(dir,5,6)
   modelos <- list.files(path = dir,
                         pattern = "pred.*.csv", full.names = TRUE) %>%
-    map(eval,true=df_true,exp=exp,dir=dir,test_name=test_name)
+    map(eval,true=df_true,exp=exp,dir=dir)
 }
