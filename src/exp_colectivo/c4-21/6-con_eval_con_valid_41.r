@@ -18,7 +18,7 @@ require("lubridate")
 #Parametros del script
 PARAM  <- list()
 PARAM$exp_col <- "41"
-PARAM$inp_col <- "41"
+PARAM$inp_col <- "71"
 
 PARAM$experimento  <- paste0("EC",PARAM$exp_col,"-6-results")
 PARAM$exp_input  <- paste0("EC",PARAM$inp_col,"-4-train_strategy")
